@@ -77,5 +77,7 @@
 
 JSON表示比图中的多表模式具有更好的局部性（locality）。如果在前面的关系型示例中 获取简介，那需要执行多个查询（通过 user_id 查询每个表），或者在User表与其下属表之 间混乱地执行多路连接。而在JSON表示中，所有相关信息都在同一个地方，一个查询就足够 了。
 
+从用户简介文件到用户职位，教育历史和联系信息，这种一对多关系隐含了数据中的一个树 状结构，而JSON表示使得这个树状结构变得明确
 
+![img](https://github.com/Qasak/distributed-system/blob/master/%E6%95%B0%E6%8D%AE%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E7%9F%B3/%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%9F%A5%E8%AF%A2%E8%AF%AD%E8%A8%80/json0.png)
 
