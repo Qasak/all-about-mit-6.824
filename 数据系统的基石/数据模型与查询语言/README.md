@@ -377,7 +377,7 @@ RETURN person.name
 
 在关系数据库中，你通常会事先知道在查询中需要哪些连接。 在图查询中，你可能需要在找到待查找的顶点之前，遍历可变数量的边。也就是说，连接的 数量事先并不确定。
 
-在Cypher中，用 WITHIN * 0 非常简洁地表述了上述事实：“沿着 WITHIN 边，零次或多次”。它 很像正则表达式中的 * 运算符。 自SQL:1999，查询可变长度遍历路径的思想可以使用称为递归公用表表达式（ WITH RECURSIVE 语法）的东西来表示。例2-5显示了同样的查询 - 查找从美国移民到欧洲的人的姓名 - 在SQL使用这种技术（PostgreSQL，IBM DB2，Oracle和SQL Server均支持）来表述。但 是，与Cypher相比，其语法非常笨拙。 例2-5 与示例2-4同样的查询，在SQL中使用递归公用表表达式表示
+在Cypher中，用 WITHIN * 0 非常简洁地表述了上述事实：“沿着 WITHIN 边，零次或多次”。它 很像正则表达式中的 * 运算符。 自SQL:1999，查询可变长度遍历路径的思想可以使用称为递归公用表表达式（ *WITH RECURSIVE* 语法）的东西来表示。例2-5显示了同样的查询 - 查找从美国移民到欧洲的人的姓名 - 在SQL使用这种技术（PostgreSQL，IBM DB2，Oracle和SQL Server均支持）来表述。但 是，与Cypher相比，其语法非常笨拙。 例2-5 与示例2-4同样的查询，在SQL中使用递归公用表表达式表示
 
 ```SQL
 WITH RECURSIVE
@@ -412,13 +412,60 @@ WITH RECURSIVE
         JOIN lives_in_europe ON vertices.vertex_id = lives_in_europe.vertex_id;
 ```
 
++ 首先，查找 name 属性为 United States 的顶点，将其作为 in_usa 顶点的集合的第一个 元素。 
++ 从 in_usa 集合的顶点出发，沿着所有的 with_in 入边，将其尾顶点加入同一集合，不断 递归直到所有 with_in 入边都被访问完毕。 
++ 同理，从 name 属性为 Europe 的顶点出发，建立 in_europe 顶点的集合。 
++ 对于 in_usa 集合中的每个顶点，根据 born_in 入边来查找出生在美国某个地方的人。 
++ 同样，对于 in_europe 集合中的每个顶点，根据 lives_in 入边来查找居住在欧洲的人。 
++ 最后，把在美国出生的人的集合与在欧洲居住的人的集合相交。
+
+同一个查询，用某一个查询语言可以写成4行，而用另一个查询语言需要29行，这恰恰说明了 不同的数据模型是为不同的应用场景而设计的。选择适合应用程序的数据模型非常重要
+
+### 三元组存储和SPARQL
+
+三元组：(主语,谓语,宾语)
+
+例如：(吉姆,喜欢,香蕉)
+
+三元组的主语相当于图中的一个顶点。谓语宾语是下面两情况之一：
+
+1. 原始数据类型中的值，例如字符串或数字。在这种情况下，三元组的谓语和宾语相当于 主语顶点上的属性的键和值。例如， (lucy, age, 33) 就像属性 {“age”：33} 的顶点 lucy。
+2. 图中的另一个顶点。在这种情况下，谓语是图中的一条边，主语是其尾部顶点，而宾语 是其头部顶点。例如，在 (lucy, marriedTo, alain) 中主语和宾语 lucy 和 alain 都是顶 点，并且谓语 marriedTo 是连接他们的边的标签。
 
 
 
+```turtle
+@prefix : <urn:example:>.
+_:lucy a :Person.
+_:lucy :name "Lucy".
+_:lucy :bornIn _:idaho.
+_:idaho a :Location.
+_:idaho :name "Idaho".
+_:idaho :type "state".
+_:idaho :within _:usa.
+_:usa a :Location
+_:usa :name "United States"
+_:usa :type "country".
+_:usa :within _:namerica.
+_:namerica a :Location
+_:namerica :name "North America"
+_:namerica :type :"continent"
+```
 
+图的顶点：` _：someName`
 
+当谓语表示边时，该宾语是一 个顶点，如` _:idaho :within _:usa` 。当谓语是一个属性时，该宾语是一个字符串，如 `_:usa :name "United States"`
 
+更简洁的写法（分号隔开，说明关于同一个主语的多个事情）：
 
+```turtle
+@prefix : <urn:example:>.
+_:lucy a :Person; :name "Lucy"; :bornIn _:idaho.
+_:idaho a :Location; :name "Idaho"; :type "state"; :within _:usa
+_:usa a :Loaction; :name "United States"; :type "country"; :within _:namerica.
+_:namerica a :Location; :name "North America"; :type "continent".
+
+```
 
 
 
