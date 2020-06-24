@@ -371,6 +371,57 @@ RETURN person.name
 
 执行这条查询可能会有几种可行的查询路径。这里给出的描述建议首先扫描数据库中的所有 人，检查每个人的出生地和居住地，然后只返回符合条件的那些人。 等价地，也可以从两个 Location 顶点开始反向地查找。假如 name 属性上有索引，则可以高 效地找到代表美国和欧洲的两个顶点。然后，沿着所有 WITHIN 入边，可以继续查找出所有在 美国和欧洲的位置（州，地区，城市等）。最后，查找出那些可以由 BORN_IN 或 LIVES_IN 入 边到那些位置顶点的人。 通常对于声明式查询语言来说，在编写查询语句时，不需要指定执行细节：查询优化程序会 自动选择预测效率最高的策略，因此你可以继续编写应用程序的其他部分。
 
+### SQL中的图查询
+
+例2-2建议在关系数据库中表示图数据。但是，如果把图数据放入关系结构中，我们是否也可 以使用SQL查询它？ 答案是肯定的，但有些困难。
+
+在关系数据库中，你通常会事先知道在查询中需要哪些连接。 在图查询中，你可能需要在找到待查找的顶点之前，遍历可变数量的边。也就是说，连接的 数量事先并不确定。
+
+在Cypher中，用 WITHIN * 0 非常简洁地表述了上述事实：“沿着 WITHIN 边，零次或多次”。它 很像正则表达式中的 * 运算符。 自SQL:1999，查询可变长度遍历路径的思想可以使用称为递归公用表表达式（ WITH RECURSIVE 语法）的东西来表示。例2-5显示了同样的查询 - 查找从美国移民到欧洲的人的姓名 - 在SQL使用这种技术（PostgreSQL，IBM DB2，Oracle和SQL Server均支持）来表述。但 是，与Cypher相比，其语法非常笨拙。 例2-5 与示例2-4同样的查询，在SQL中使用递归公用表表达式表示
+
+```SQL
+WITH RECURSIVE
+    -- in_usa 包含所有的美国境内的位置ID
+    in_usa(vertex_id) AS (
+    SELECT vertex_id FROM vertices WHERE properties ->> 'name' = 'United States'
+    UNION
+    SELECT edges.tail_vertex FROM edges
+        JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+        WHERE edges.label = 'within'
+    ),
+    -- in_europe 包含所有的欧洲境内的位置ID
+    in_europe(vertex_id) AS (
+    SELECT vertex_id FROM vertices WHERE properties ->> 'name' = 'Europe'
+    UNION
+    SELECT edges.tail_vertex FROM edges
+        JOIN in_europe ON edges.head_vertex = in_europe.vertex_id
+        WHERE edges.label = 'within' ),
+    -- born_in_usa 包含了所有类型为Person，且出生在美国的顶点
+    born_in_usa(vertex_id) AS (
+    SELECT edges.tail_vertex FROM edges
+        JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+        WHERE edges.label = 'born_in' ),
+    -- lives_in_europe 包含了所有类型为Person，且居住在欧洲的顶点。
+    lives_in_europe(vertex_id) AS (
+    SELECT edges.tail_vertex FROM edges
+        JOIN in_europe ON edges.head_vertex = in_europe.vertex_id
+        WHERE edges.label = 'lives_in')
+    SELECT vertices.properties ->> 'name'
+    FROM vertices
+        JOIN born_in_usa ON vertices.vertex_id = born_in_usa.vertex_id
+        JOIN lives_in_europe ON vertices.vertex_id = lives_in_europe.vertex_id;
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
