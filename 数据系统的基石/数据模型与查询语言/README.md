@@ -101,6 +101,188 @@ region_id 和 industry_id 是以ID，而不是纯字符串“Greater Seattle Are
 
 > RethinkDB支持连接，MongoDB不支持连接，ChouchDB只支持预先声明的试图
 
+如果数据库本身不支持连接，则必须在应用程序代码中通过对数据库进行多个查询来模拟连接。
+
+此外，即便应用程序的最初版本适合无连接的文档模型，随着功能添加到应用程序中，数据 会变得更加互联。例如，考虑一下对简历例子进行的一些修改：
+
+组织和学校作为实体
+
+在前面的描述中， organization （用户工作的公司）和 school_name （他们学习的地方）只 是字符串。也许他们应该是对实体的引用呢？然后，每个组织，学校或大学都可以拥有自己 的网页（标识，新闻提要等）。每个简历可以链接到它所提到的组织和学校，并且包括他们 的图标和其他信息（参见图2-3，来自LinkedIn的一个例子）。
+
+
+
+![img]()
+
+公司名不仅是字符串，还是一个指向公司实体的链接
+
+
+
+推荐
+
+推荐应该拥有作者个人简介的引用。
+
+### 文档数据库是否重蹈覆辙？
+
+回顾关系模型和网络模型的辩论
+
+### 网络模型
+
+网络模型种记录之间的链接不是外键，而更像指针
+
+访问记录的方法是沿着访问路径，类似于链表
+
+无论是分层还是网络模型，如果没有所需数据的路径，必须浏览手写数据库查询代码
+
+更改数据模型是很难的
+
+### 关系模型
+
+没有嵌套结构和复杂的访问路径
+
+### 文档和关系数据库的融合
+
+大多数关系数据库(MySQL除外)都支持XML
+
+关系模型和文档模型混合是未来数据库一条很好的路线
+
+## 数据查询语言
+
+SQL是一种声明式查询语言
+
+IMS和CODASYL使用命令式代码查询
+
+SQL相当有限的功能性为数据库提供了更多自动优化的空间
+
+声明式语言往往适合并行执行
+
+命令代码很难在多个内核和多个机器之间并行化，因为它制定了指令必须以特定顺序执行（它仅指定结果的模式，不指定用于确定结果的算法）
+
+### Web上的声明式查询
+
+在Web浏览器中，使用声明式CSS样式比使用JavaScript命令式地操作样式要好得多。类似 地，在数据库中，使用像SQL这样的声明式查询语言比使用命令式查询API要好得多
+
+### MapReduce查询
+
+一些NoSQL数据存储(包括MongoDB,CouchDB)支持有限形式的MapReduce作为多个文档中执行只读查询的机制
+
+简述MongoDB使用的模型：
+
+MapReduce既不是一个声明式查询语言，也不是一个完全命令式的查询API，而是处于两者之间：查询的逻辑用代码片段表示，这些代码片段会被处理框架重复性调用。它基于`map` `reduce`函数
+
+eg：假设你是一名海洋生物学家，每当你看到海洋中的动物 时，你都会在数据库中添加一条观察记录。现在你想生成一个报告，说明你每月看到多少鲨 鱼。
+
+在PostgreSQL中：
+
+```sql
+SELECT
+    date_trunc('month', observation_timestamp) AS observation_month,
+    sum(num_animals) AS total_animals
+FROM observations
+WHERE family = 'Sharks'
+GROUP BY observation_month;
+```
+
+date_trunc('month'，timestamp) 函数用于确定包含 timestamp 的日历月份，并返回代表该月 份开始的另一个时间戳。换句话说，它将时间戳舍入成最近的月份
+
+同样的查询用MongoDB的MapReduce功能可以如下表述：
+
+```javascript
+db.observations.mapReduce(function map() {
+    var year = this.observationTimestamp.getFullYear();
+    var month = this.observationTimestamp.getMonth() + 1;
+    emit(year + "-" + month, this.numAnimals);
+},
+function reduce(key, values) {
+    return Array.sum(values);
+},
+{
+    query: {
+        family: "Sharks"
+    },
+    out: "monthlySharkReport"
+});
+```
+
++ 可以声明式地指定只考虑鲨鱼种类的过滤器（这是一个针对MapReduce的特定于 MongoDB的扩展）。
++ 将 this 设置为文档对象,每个匹配查询的文档都会调用一次JavaScript函数 map
++ map 函数发出一个键（包括年份和月份的字符串，如 "2013-12" 或 "2014-1" ）和一个值 （该观察记录中的动物数量）。
++ map 发出的键值对按键来分组。对于具有相同键（即，相同的月份和年份）的所有键值 对，调用一次 reduce 函数。
++ reduce 函数将特定月份内所有观测记录中的动物数量相加。
++ 将最终的输出写入到 monthlySharkReport 集合中。
+
+例如，假设`observations`集合中包含这两个文档：
+
+```js
+{
+    observationTimestamp: Date.parse( "Mon, 25 Dec 1995 12:34:56 GMT"),
+    family: "Sharks",
+    species: "Carcharodon carcharias",
+    numAnimals: 3
+{
+}
+    observationTimestamp: Date.parse("Tue, 12 Dec 1995 16:17:18 GMT"),
+    family: "Sharks",
+    species: "Carcharias taurus",
+    numAnimals: 4
+}
+
+```
+
+对每个文档都会调用一次 map 函数，结果将是 emit("1995-12",3) 和 emit("1995-12",4) 。随 后，以 reduce("1995-12",[3,4]) 调用 reduce 函数，将返回 7 。
+
+map和reduce函数在功能上有所限制：它们必须是纯函数，这意味着它们只使用传递给它们 的数据作为输入，它们不能执行额外的数据库查询，也不能有任何副作用。这些限制允许数 据库以任何顺序运行任何功能，并在失败时重新运行它们。然而，map和reduce函数仍然是 强大的：它们可以解析字符串，调用库函数，执行计算等等。
+
+> 纯函数：
+>
+> - 它应始终返回相同的值。不管调用该函数多少次，无论今天、明天还是将来某个时候调用它。
+> - 自包含（不使用全局变量）。
+> - 它不应修改程序的状态或引起副作用（修改全局变量）。
+
+MapReduce是一个相当底层的编程模型，用于计算机集群上的分布式执行。像SQL这样的更 高级的查询语言可以用一系列的MapReduce操作来实现（见第10章），但是也有很多不使用 MapReduce的分布式SQL实现。请注意，SQL中没有任何内容限制它在单个机器上运行，而 MapReduce在分布式查询执行上没有垄断权。
+
+
+
+能够在查询中使用JavaScript代码是高级查询的一个重要特性，但这不限于MapReduce，一 些SQL数据库也可以用JavaScript函数进行扩展
+
+MapReduce的一个可用性问题是，必须编写两个密切合作的JavaScript函数，这通常比编写 单个查询更困难。此外，声明式查询语言为查询优化器提供了更多机会来提高查询的性能。 基于这些原因，MongoDB 2.2添加了一种叫做聚合管道的声明式查询语言的支持【9】。用这 种语言表述鲨鱼计数查询如下所示：
+
+
+
+```json
+db.observations.aggregate([
+    { $match: { family: "Sharks" } },
+    { $group: {
+    _id: {
+        year: { $year: "$observationTimestamp" },
+        month: { $month: "$observationTimestamp" }
+    },
+    totalAnimals: { $sum: "$numAnimals" } }}
+]);
+
+```
+
+聚合管道语言与SQL的子集具有类似表现力，但是它使用基于JSON的语法而不是SQL的英语 句子式语法; 这种差异也许是口味问题。这个故事的寓意是NoSQL系统可能会发现自己意外地 重新发明了SQL，尽管带着伪装。
+
+## 图数据模型
+
+多对多关系是不同数据模型之间具有区别性的重要特征。
+
+如果你的应用程 序大多数的关系是一对多关系（树状结构化数据），或者大多数记录之间不存在关系，那么 使用文档模型是合适的。
+
+但是，要是多对多关系在你的数据中很常见呢？关系模型可以处理多对多关系的简单情况， 但是随着数据之间的连接变得更加复杂，将数据建模为图形显得更加自然。
+
+一个图由两种对象组成：顶点（vertices）（也称为节点（nodes） 或实体（entities））， 和边（edges）（ 也称为关系（relationships）或弧 （arcs） ）。多种数据可以被建模为 一个图形。典型的例子包括：
+
+社交图谱 顶点是人，边指示哪些人彼此认识。 
+
+网络图谱 顶点是网页，边缘表示指向其他页面的HTML链接。 
+
+公路或铁路网络 顶点是交叉路口，边线代表它们之间的道路或铁路线。
+
+
+
+
+
 
 
 
