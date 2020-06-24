@@ -279,9 +279,97 @@ db.observations.aggregate([
 
 公路或铁路网络 顶点是交叉路口，边线代表它们之间的道路或铁路线。
 
+可以将那些众所周知的算法运用到这些图上：例如，汽车导航系统搜索道路网络中两点之间 的最短路径，PageRank可以用在网络图上来确定网页的流行程度，从而确定该网页在搜索结 果中的排名。
+
+在刚刚给出的例子中，图中的所有顶点代表了相同类型的事物（人，网页或交叉路口）。不 过，图并不局限于这样的同类数据：同样强大地是，图提供了一种一致的方式，用来在单个 数据存储中存储完全不同类型的对象。例如，Facebook维护一个包含许多不同类型的顶点和边的单个图：顶点表示人，地点，事件，签到和用户的评论;边缘表示哪些人是彼此的朋友， 哪个签到发生在何处，谁评论了哪条消息，谁参与了哪个事件，等等
+
+有几种不同但相关的方法用来构建和查询图表中的数据。在本节中，我们将讨论属性图模型 （由Neo4j，Titan和InfiniteGraph实现）和三元组存储（triple-store）模型（由Datomic， AllegroGraph等实现）。我们将查看图的三种声明式查询语言：Cypher，SPARQL和 Datalog。除此之外，还有像Gremlin 【36】这样的图形查询语言和像Pregel这样的图形处理 框架（见第10章）。
+
+### 属性图
+
+在属性图模型中，每个顶点（vertex）包括：
+
++ 唯一的标识符 
++ 一组 出边（outgoing edges） 
++ 一组 入边（ingoing edges） 
++ 一组属性（键值对）
+
+每条 边（edge） 包括： 
+
++ 唯一标识符 
++ 边的起点/尾部顶点（tail vertex）
++ 边的终点/头部顶点（head vertex）
++ 描述两个顶点之间关系类型的标签
++ 一组属性（键值对）
+
+可以将图存储看作由两个关系表组成：一个存储顶点，另一个存储边，如例2-2所示（该模式 使用PostgreSQL json数据类型来存储每个顶点或每条边的属性）。头部和尾部顶点用来存储 每条边；如果你想要一组顶点的输入或输出边，你可以分别通 过 head_vertex 或 tail_vertex 来查询 edges 表。
+
+```plsql
+CREATE TABLE vertices (
+    vertex_id INTEGER PRIMARY KEY,
+    properties JSON
+);
+CREATE TABLE edges (
+    edge_id INTEGER PRIMARY KEY,
+    tail_vertex INTEGER REFERENCES vertices (vertex_id),
+    head_vertex INTEGER REFERENCES vertices (vertex_id),
+    label TEXT,
+    properties JSON
+);
+CREATE INDEX edges_tails ON edges (tail_vertex);
+CREATE INDEX edges_heads ON edges (head_vertex);
+```
+
+一些属性：
+
+1. 任何顶点都可以有一条边连接到任何其他顶点。没有模式限制哪种事物可不可以关联。 
+
+2. 给定任何顶点，可以高效地找到它的入边和出边，从而遍历图，即沿着一系列顶点的路 径前后移动。（这就是为什么例2-2在 tail_vertex 和 head_vertex 列上都有索引的原因。） 
+3.  通过对不同类型的关系使用不同的标签，可以在一个图中存储几种不同的信息，同时仍 然保持一个清晰的数据模型。
+
+这些特性为数据建模提供了很大的灵活性，如图2-5所示。图中显示了一些传统关系模式难以 表达的事情，例如不同国家的不同地区结构（法国有省和州，美国有不同的州和州），国中国的怪事（先忽略主权国家和国家错综复杂的烂摊子），不同的数据粒度（Lucy现在的住所 被指定为一个城市，而她的出生地点只是在一个州的级别）。
+
+你可以想象延伸图还能包括许多关于Lucy和Alain，或其他人的其他更多的事实。例如，你可 以用它来表示食物过敏（为每个过敏源增加一个顶点，并增加人与过敏源之间的一条边来指 示一种过敏情况），并链接到过敏源，每个过敏源具有一组顶点用来显示哪些食物含有哪些 物质。然后，你可以写一个查询，找出每个人吃什么是安全的。图表在可演化性是富有优势 的：当向应用程序添加功能时，可以轻松扩展图以适应应用程序数据结构的变化。
 
 
 
+## Cypher查询语言
+
+Cypher式属性图的声明式查询语言，为Neo4j图数据库而发明
+
+```cypher
+CREATE
+    (NAmerica:Location {name:'North America', type:'continent'}),
+    (USA:Location {name:'United States', type:'country' }),
+    (Idaho:Location {name:'Idaho', type:'state' }),
+    (Lucy:Person {name:'Lucy' }),
+    (Idaho) -[:WITHIN]-> (USA) -[:WITHIN]-> (NAmerica),
+    (Lucy) -[:BORN_IN]-> (Idaho)
+```
+
+当图2-5的所有顶点和边被添加到数据库后，让我们提些有趣的问题：例如，找到所有从美国 移民到欧洲的人的名字。更确切地说，这里我们想要找到符合下面条件的所有顶点，并且返 回这些顶点的 name 属性：该顶点拥有一条连到美国任一位置的 BORN_IN 边，和一条连到欧洲 的任一位置的 LIVING_IN 边。
+
+例2-4展示了如何在Cypher中表达这个查询。在MATCH子句中使用相同的箭头符号来查找图 中的模式： (person) -[:BORN_IN]-> () 可以匹配 BORN_IN 边的任意两个顶点。该边的尾节点 被绑定了变量 person ，头节点则未被绑定。
+
+```cypher
+MATCH
+    (person) -[:BORN_IN]-> () -[:WITHIN*0..]-> (us:Location {name:'United States'}),
+    (person) -[:LIVES_IN]-> () -[:WITHIN*0..]-> (eu:Location {name:'Europe'})
+RETURN person.name
+
+```
+
+
+
+> 找到满足以下两个条件的所有顶点（称之为person顶点）：
+>
+> 1. person 顶点拥有一条到某个顶点的 BORN_IN 出边。从那个顶点开始，沿着一系 列 WITHIN 出边最终到达一个类型为 Location ， name 属性为 United States 的顶 点。
+>
+>     
+>
+> 2. person 顶点还拥有一条 LIVES_IN 出边。沿着这条边，可以通过一系列 WITHIN 出边 最终到达一个类型为 Location ， name 属性为 Europe 的顶点。 对于这样的 Person 顶点，返回其 name 属性。
+
+执行这条查询可能会有几种可行的查询路径。这里给出的描述建议首先扫描数据库中的所有 人，检查每个人的出生地和居住地，然后只返回符合条件的那些人。 等价地，也可以从两个 Location 顶点开始反向地查找。假如 name 属性上有索引，则可以高 效地找到代表美国和欧洲的两个顶点。然后，沿着所有 WITHIN 入边，可以继续查找出所有在 美国和欧洲的位置（州，地区，城市等）。最后，查找出那些可以由 BORN_IN 或 LIVES_IN 入 边到那些位置顶点的人。 通常对于声明式查询语言来说，在编写查询语句时，不需要指定执行细节：查询优化程序会 自动选择预测效率最高的策略，因此你可以继续编写应用程序的其他部分。
 
 
 
