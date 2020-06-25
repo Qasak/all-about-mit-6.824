@@ -123,11 +123,27 @@ region_id 和 industry_id 是以ID，而不是纯字符串“Greater Seattle Are
 
 ### 文档数据库是否重蹈覆辙？
 
-回顾关系模型和网络模型的辩论
+在多对多的关系和连接已常规用在关系数据库时，文档数据库和NoSQL重启了辩论：如何最好地在数据库中表示多对多关系。
+
+IBM的信息管理系统（IMS）使用了一个相当简单的数据模型，称为层次模型（hierarchical model），它与文档数据库使用的JSON模型有一些惊人的相似之处【2】。它将所有数据表示为嵌套在记录 中的记录树
+
+同文档数据库一样，IMS能良好处理一对多的关系，但是很难应对多对多的关系，并且不支持连接
+
+开发人员必须决定是否复制（非规范化）数据或手动解决从一个记录到另一个记录的引用
+
+这些二十世纪六七十年代的问题与现在开发人员遇到的文档数据库问题非常相似
+
+那时人们提出了各种不同的解决方案来解决层次模型的局限性。其中最突出的两个是关系模型（relational model）（它变成了SQL，统治了世界）和网络模型（network model）（最初很受关注，但最终变得冷门）。
 
 ### 网络模型
 
+也被称为*CODASYL*模型
+
 网络模型种记录之间的链接不是外键，而更像指针
+
+> 主键：一列（或一组列），其值能够唯一区分表 中每个行。
+
+> 外键：某个表中的一列，它包含另一个表 的主键值，定义了两个表之间的关系。
 
 访问记录的方法是沿着访问路径，类似于链表
 
@@ -147,9 +163,9 @@ region_id 和 industry_id 是以ID，而不是纯字符串“Greater Seattle Are
 
 ## 数据查询语言
 
-SQL是一种声明式查询语言
+SQL是一种*声明式*查询语言
 
-IMS和CODASYL使用命令式代码查询
+IMS和CODASYL使用*命令式*代码查询
 
 SQL相当有限的功能性为数据库提供了更多自动优化的空间
 
@@ -467,9 +483,99 @@ _:namerica a :Location; :name "North America"; :type "continent".
 
 ```
 
+### 语义网络
+
+### RDF(资源描述框架)数据模型
+
+上面的Turtle语言是一种用于RDF数据的人类可读格式
+
+Apache Jena可以根据需要在不同的RDF格式之间自动转换
+
+```xml
+<rdf:RDF
+    xmlns="urn:example:"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <Location rdf:nodeID="idaho">
+        <name>Idaho</name>
+        <type>state</type>
+        <within>
+            <Location rdf:nodeID="usa">
+                <name>United States</name>
+                <type>country</type>
+                <within>
+                    <Location rdf:nodeID="namerica">
+                        <name>North America</name>
+                        <type>continent</type>
+                    </Location>
+                </within>
+            </Location>
+        </within>
+    </Location>
+    <Person rdf:nodeID="lucy">
+        <name>Lucy</name>
+        <bornIn rdf:nodeID="idaho"/>
+    </Person>
+</rdf:RDF>
+
+```
+
+### SPARQL查询语言
+
+```SPARQL
+PREFIX : <urn:example:>
+SELECT ?personName WHERE {
+    ?person :name ?personName.
+    ?person :bornIn / :within* / :name "United States".
+    ?person :livesIn / :within* / :name "Europe".
+}
+
+```
+
+sparql和cypher(sparql的变量以?开头):
+
+```
+(person) -[:BORN_IN]-> () -[:WITHIN*0..]-> (location) # Cypher
+?person :bornIn / :within* ?location. # SPARQL
+```
+
+因为RDF不区分属性和边，而只是将它们作为谓语，所以可以使用相同的语法来匹配属性。 在下面的表达式中，变量 usa 被绑定到任意具有值为字符串 "United States" 的 name 属性的 顶点：
+
+```
+(usa {name:'United States'}) # Cypher
+?usa :name "United States". # SPARQL
+```
 
 
 
+### Datalog
 
+三元组写成：谓语(主语，宾语)
 
+```Datalog
+name(namerica, 'North America').
+type(namerica, continent).
+name(usa, 'United States').
+type(usa, country).
+within(usa, namerica).
+name(idaho, 'Idaho').
+type(idaho, state).
+within(idaho, usa).
+name(lucy, 'Lucy').
+born_in(lucy, idaho).
 
+```
+
+Datalog是Prolog的子集
+
+## 小结
+
+在历史上，数据最开始被表示为一棵大树（层次数据模型），但是这不利于表示多对多的关 系，所以发明了关系模型来解决这个问题
+
+最近，开发人员发现一些应用程序也不适合采用 关系模型
+
+。新的非关系型“NoSQL”数据存储在两个主要方向上存在分歧：
+
+1. 文档数据库的应用场景是：数据通常是自我包含的，而且文档之间的关系非常稀少。 
+2. 图形数据库用于相反的场景：任意事物都可能与任何事物相关联。
+
+文档数据库和图数据库有一个共同点，那就是它们通常不会为存储的数据强制一个模式，
