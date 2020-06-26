@@ -44,9 +44,83 @@ db_set 函数对于极其简单的场景其实有非常好的性能， 因为在
 来说， 查找的开销是 O(n) ： 如果数据库记录数量 n 翻了一倍， 查找时间也要翻一倍。 这就
 不好了。  
 
-### 散列索引
+### hash索引
 
+![img](https://github.com/Qasak/distributed-system/blob/master/%E6%95%B0%E6%8D%AE%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E7%9F%B3/%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%9F%A5%E8%AF%A2%E8%AF%AD%E8%A8%80/hash_map0.png)
 
+键值存储与在大多数编程语言中可以找到的字典（ dictionary） 类型非常相似， 通常字典都是
+用散列映射（ hash map） （ 或哈希表（ hash table） ） 实现的。   
 
+### python的字典实现
 
++ 开放寻址法(open addressing)
+
++ 解释：所有的元素都存放在散列表里，当产生哈希冲突时，通过一个探测函数计算出下一个候选位置，如果下一个获选位置还是有冲突，那么不断通过探测函数往下找，直到找个一个空槽来存放待插入元素。
+
++ 字典中的一个key-value键值对元素称为entry（也叫做slots），对应到Python内部是PyDictEntry
+
++ PyDictEntry：
+
+  ```c
+  typedef struct {
+      /* Cached hash code of me_key.  Note that hash codes are C longs.
+       * We have to use Py_ssize_t instead because dict_popitem() abuses
+       * me_hash to hold a search finger.
+       */
+      Py_ssize_t me_hash;
+      PyObject *me_key;
+      PyObject *me_value;
+  } PyDictEntry;
+  ```
+
+  
+
++ PyDictObject: PyDictEntry对象的集合
+
+  ```c
+  typedef struct _dictobject PyDictObject;
+  struct _dictobject {
+      PyObject_HEAD
+      Py_ssize_t ma_fill;  /* # Active + # Dummy */
+      Py_ssize_t ma_used;  /* # Active */
+  
+      /* The table contains ma_mask + 1 slots, and that's a power of 2.
+       * We store the mask instead of the size because the mask is more
+       * frequently needed.
+       */
+      Py_ssize_t ma_mask;
+  
+      /* ma_table points to ma_smalltable for small tables, else to
+       * additional malloc'ed memory.  ma_table is never NULL!  This rule
+       * saves repeated runtime null-tests in the workhorse getitem and
+       * setitem calls.
+       */
+      PyDictEntry *ma_table;
+      PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash);
+      PyDictEntry ma_smalltable[PyDict_MINSIZE];
+  };
+  ```
+
+  
+
++ 其中的PyObject_HEAD:
+
+  ```c
+      Py_ssize_t ob_refcnt;
+      struct _typeobject *ob_type;
+  /*
+  ob_refcnt，引用记数
+  ob_type，类型对象的指针
+  */
+  ```
+
+  
+
+### 用hash map索引磁盘上的数据
+
+假设我们的数据存储是一个追加写入(appending to)的文件
+
+最简单的索引(indexing)策略是：keep an in-memory hash map where every key is mapped to a byte offset in the data file  —the location at which the value can be found  
+
+Bitcask(Riak的默认存储引擎)就是这样实现的
 
