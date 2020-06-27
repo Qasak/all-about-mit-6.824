@@ -41,3 +41,10 @@ JSON， XML和CSV是文本格式， 因此具有人类可读性（ 尽管语法�
 ### 二进制编码
 
 ![img](https://github.com/Qasak/distributed-system/blob/master/%E6%95%B0%E6%8D%AE%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E7%9F%B3/%E7%BC%96%E7%A0%81%E4%B8%8E%E6%BC%94%E5%8C%96/messagepack-json.png)
+
+### Thrift, Protocol Buffers
+
+![img](https://github.com/Qasak/distributed-system/blob/master/%E6%95%B0%E6%8D%AE%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E7%9F%B3/%E7%BC%96%E7%A0%81%E4%B8%8E%E6%BC%94%E5%8C%96/Thrift%20BinaryProtocol.png)
+
+### 数据流模式
+
