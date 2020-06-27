@@ -165,5 +165,5 @@ Bitcask(Riak的默认存储引擎)就是这样实现的
 
 ## SSTables和LSM-Tree
 
-
+排序字符串表(sorted string table)：SSTable
 
