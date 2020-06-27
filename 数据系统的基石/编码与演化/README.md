@@ -6,8 +6,11 @@
 
 ## 数据编码格式
 
-许多编程语言都内置支持将内存中的对象编码为字节序列。例如， J av a有 j av a.
-io. Serializable , Ruby有Marshal , Python有 pickle l3l等。此外，还有许多第
-三方库，例如用于Java 的Kryo  。  
+许多编程语言都内建了将内存对象编码为字节序列的支持。 例如， Java
+有 java.io.Serializable 【1】 ， Ruby有 Marshal 【2】 ， Python有 pickle 【3】 等等。 许多
+第三方库也存在， 例如 Kryo for Java 【4】 。  
 
 使用语言内置的编码方案通常不是个好主意，除非只是为了临时尝试。  
+
+### JSON, XML, 二进制变体
+
