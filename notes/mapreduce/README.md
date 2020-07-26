@@ -199,3 +199,22 @@ reduce	(k2, list(v2))	 ->list(v2)
   map函数为每个输入文档发出一个<hostname，term vector>对（主机名从文档的URL中提取）。
 
   reduce函数传递给定主机的所有每个文档项向量。它将这些术语向量相加，丢弃不常见的术语，然后发出最终的<hostname，term vector>对
+
++ **Inverted index(倒排索引)**
+
+  > 一个未经处理的数据库中，一般是以文档ID作为索引，以文档内容作为记录。
+  > 而Inverted index 指的是将单词或记录作为索引，将文档ID作为记录，这样便可以方便地通过单词或记录查找到其所在的文档。
+
+  map函数解析每个文档，并发出一个<word，document ID>对的序列。
+
+  reduce函数接受给定单词的所有对，对相应的文档id进行排序并发出一个
+
+  <word，list（document ID）>配对。
+
+  所有输出对的集合形成一个简单的倒排索引。很容易增加这种计算来跟踪单词的位置。
+
++ **分布式排序**
+
+  map函数从每个记录中提取键，并发出一个<key，record>对。
+
+  reduce函数不变地发出所有对。该计算取决于第4.1节中描述的partitioning facilities和第4.2节中描述的排序属性。
