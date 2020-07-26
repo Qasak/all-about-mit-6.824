@@ -77,15 +77,16 @@ class WordCounter : public Mapper {
             for (int i = 0; i < n; ) {
             // Skip past leading whitespace
             while ((i < n) && isspace(text[i]))
-            i++;
+            	i++;
+            
             // Find word end
             int start = i;
             while ((i < n) && !isspace(text[i]))
-            i++;
-			if (start < i)
-			Emit(text.substr(start,i-start),"1");
-		}
-	}
+            	i++;
+            if (start < i)
+            Emit(text.substr(start,i-start),"1");
+        }
+    }
 };
 REGISTER_MAPPER(WordCounter);
 
@@ -146,3 +147,55 @@ int main(int argc, char** argv) {
 
 #### 2.2 类型
 
+尽管前面的伪代码是根据字符串输入和输出编写的，但从概念上讲，用户提供的map和reduce函数具有关联类型：
+
+```c
+map		(k1, v1)		->list(k2, v2)
+reduce	(k2, list(v2))	 ->list(v2)
+```
+
+
+
+ 例如，输入键和值是从与输出键和值不同的域中提取的。
+
+此外，中间键和值与输出键和值来自同一个域。
+
+我们的C++实现将字符串传递到用户定义的函数，并将其留给用户代码，以便在字符串和适当类型之间转换。
+
+#### 2.3 更多例子
+
+下面是一些有趣程序的简单示例
+
+他们可以很容易地表示为MapReduce计算。
+
++ **分布式Grep**
+
+  如果map函数与提供的模式匹配，那么它将发出(emit)一行。
+
+  reduce函数是一个标识函数(identify function)，它只将提供的中间数据复制到输出
+
++ **URL访问频率计数**
+
+  map函数处理网页请求和输出的日志`<URL, 1>`
+
+  reduce函数将同一URL的所有值相加，并发出一个`<URL, total count>`对
+
+
+
++ **反向Web链接图**
+
+  map函数输出`<target，source>`对，
+
+  对于每个指向`target`URL，在其页面中发现的`source`
+
+  reduce函数串联list并发送`<target, list(sorce)>`
+
+
+
++ **每个主机的术语向量**
+
+  术语向量把出现在一个文档或一组文档中的最重要的单词概括为一个<word，frequency>对的列表。
+
+  map函数为每个输入文档发出一个<hostname，term vector>对（主机名从文档的URL中提取）。
+
+  reduce函数传递给定主机的所有每个文档项向量。它将这些术语向量相加，丢弃不常见的术语，然后发出最终的<hostname，term vector>对
