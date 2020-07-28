@@ -257,6 +257,8 @@ MapReduce接口有许多不同的实现。正确的选择取决于环境。例�
 
 Reduce调用是通过使用一个分区函数(patitioning)（例如$hash(key)\mod R$）将中间密钥空间划分为R个片段来分布的。分区数（R）和分区函数由用户指定。
 
+![img](https://github.com/Qasak/all-about-distributed-system/blob/master/notes/mapreduce/%E5%9B%BE1-%E6%89%A7%E8%A1%8C%E6%A6%82%E8%A7%88-execution%20overview.png)
+
 图1显示了我们实现中MapReduce操作的总体流程。当用户程序调用`MapReduce`函数时，将发生以下操作序列（图1中编号的标签对应于下面列表中的数字）：
 
 1. 用户程序中的MapReduce库首先将输入文件分成M个部分，通常每段16兆字节到64兆字节（MB）（由用户通过可选参数控制）. 然后它会在一组机器上启动程序的许多副本. 
