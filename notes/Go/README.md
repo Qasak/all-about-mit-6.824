@@ -148,9 +148,155 @@
 
   ​	在函数中:=可在类型明确的地方代替var声明
 
-  ​	在函数外的每个语句必须以关键字开始(var func 等)，因此`:=`结构**不能**在函数外使用
+  ​	在函数外的每个语句必须以关键字开始(var，func 等)，因此`:=`结构**不能**在函数外使用
+
++ 基本类型
+
+  ```go
+  bool
+  string
+  int int8 int16 int32 int64
+  uint uint8 uint16 uint32 uint64 uintptr
+  byte // uint8的别名
+  rune // int32的别名
+       // 表示一个Unicode 码点(Unicode code point)
+       //(也就是编号，Unicode行列中相交的点)
+  float32 float64
+  complex64 complex128
+  ```
+
+  int, uint 和 uintptr 在 32 位系统上通常为 32 位宽，在 64 位系统上则为 64 位宽。 当你需要一个整数值时应使用 int 类型，除非你有特殊的理由使用固定大小或无符号的整数类型。
+
+  ```go
+  var (
+  	ToBe   bool       = false
+  	MaxInt uint64     = 1<<64 - 1
+  	z      complex128 = cmplx.Sqrt(-5 + 12i)
+  )
+  
+  func main() {
+  	fmt.Printf("Type: %T Value: %v\n", ToBe, ToBe)
+  	fmt.Printf("Type: %T Value: %v\n", MaxInt, MaxInt)
+  	fmt.Printf("Type: %T Value: %v\n", z, z)
+  }
+  ```
+
++ 零值
+
+  没有明确初始值的变量声明会被赋予零值
+
+  ​	数值类型 0
+
+  ​	布尔类型 false
+
+  ​	字符串 ""
+
++ 类型转换
+
+  `T(v)`将v值转换为类型T
+
+  ```go
+  var i int = 42
+  var f float64 = float64(i)
+  var u uint = uint(f)
+  
+  i := 42
+  f := float64(i)
+  u := uint(f)
+  ```
+
+  与 C 不同的是，Go 在不同类型的项之间赋值时需要显式转换
+
++ 类型推导
+
+  声明一个变量而不指定其类型时，变量的类型由*右值*(等号右边的值)推到得出
+
+  右值声明了类型：
+
+  ```go
+  var i int
+  j := i // j 也是一个 int
+  ```
+
+  右值为数值常量：
+
+  ```go
+  i := 42           // int
+  f := 3.142        // float64
+  g := 0.867 + 0.5i // complex128
+  ```
+
++ 常量
+
+  与变量类似，但用`const`关键字
+
+  不能用`:=`
+
+  数值常量：
+
+  ​	是高精度的值
+
+  ​	一个未指定类型的常量由上下文决定
+
+  ```go
+  const (
+  	// 将 1 左移 100 位来创建一个非常大的数字
+  	// 即这个数的二进制是 1 后面跟着 100 个 0
+  	Big = 1 << 100
+  	// 再往右移 99 位，即 Small = 1 << 1，或者说 Small = 2
+  	Small = Big >> 99
+  )
+  ```
+
+  
+
+  
 
 ### 流程控制
+
+#### for
+
+Go仅有的一种循环
+
+```go
+for i := 0; i < 10; i++ {
+    sum += i
+}
+```
+
+注意：和 C、Java、JavaScript 之类的语言不同，Go 的 for 语句后面的三个构成部分外没有小括号， 大括号 { } 则是必须的
+
+
+
+初始化语句和后置语句是可选的。
+
+```go
+sum := 1
+for sum < 1000 {
+    sum += sum
+}
+```
+
+
+
+如果省略循环条件，该循环就不会结束
+
+```go
+for {
+}
+```
+
+
+
+
+
+#### if
+
+#### switch
+
+#### defer
+
+
 
 ### struct
 
