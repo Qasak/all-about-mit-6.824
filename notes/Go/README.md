@@ -300,11 +300,263 @@ for {
 
 ### struct
 
-### slice
+一个结构体就是一组字段(field)
+
+结构体字段用点号访问
+
+```go
+package main
+
+import "fmt"
+
+type Vertex struct {
+	X int
+	Y int
+}
+
+func main() {
+	v := Vertex{1, 2}
+	v.X = 4
+	fmt.Println(v.X)
+}
+
+```
+
+结构体指针
+
+> 如果我们有一个指向结构体的指针 `p`，那么可以通过 `(*p).X` 来访问其字段 `X`。不过这么写太啰嗦了，所以语言也允许我们使用隐式间接引用，直接写 `p.X` 就可以。
+
+```go
+v := Vertex{1, 2}
+p := &v
+p.X = 1e9
+```
+
+
+
+结构体文法
+
+```go
+type Vertex struct {
+	X, Y int
+}
+
+var (
+	v1 = Vertex{1, 2}  // 创建一个 Vertex 类型的结构体
+	v2 = Vertex{X: 1}  // Y:0 被隐式地赋予
+	v3 = Vertex{}      // X:0 Y:0
+	p  = &Vertex{1, 2} // 创建一个 *Vertex 类型的结构体（指针）
+    				  // 特殊的前缀 & 返回一个指向结构体的指针。
+)
+```
+
+
+
+
+
+
+
+### slice切片
+
+切片是一个具有三项内容的描述符， 包含一个指向（ 数组内部） 数据的指针、 长度以及容量，在这三项被初始化之前， 该切片为 nil
+
+#### range
+
++ for 循环的range形式可以遍历slice或map
+
++ 当使用 for 循环遍历切片时，每次迭代都会返回两个值。第一个值为当前元素的下标，第二个值为该下标所对应元素的一份*复制*(copy)。
+
+  ```go
+  var pow = []int{1, 2, 4, 8, 16, 32, 64, 128}
+  	for i, v := range pow {
+  		fmt.Printf("2**%d = %d\n", i, v)
+  	}
+  ```
+
+  
 
 ### map
 
 ### 方法和接口
 
+#### 方法
+
+Go没有类，不过你可以为结构体类型定义方法
+
+方法就是一类带特殊的`接收者`参数的函数
+
+方法接收者在它自己的参数列表内，位于func关键字和方法名之间
+
+```go
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type Vertex struct {
+	X, Y float64
+}
+
+func (v Vertex) Abs() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+
+func main() {
+	v := Vertex{3, 4}
+	fmt.Println(v.Abs())
+}
+```
+
+> 此例中，`Abs` 方法拥有一个名为 `v`，类型为 `Vertex` 的接收者。
+
+方法即函数，下面的函数和上面的方法功能是一样的
+
+```go
+func Abs(v Vertex) float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+```
+
+
+
+可以为非结构体类型声明方法
+
+```go
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type MyFloat float64
+
+func (f MyFloat) Abs() float64 {
+	if f < 0 {
+		return float64(-f)
+	}
+	return float64(f)
+}
+
+func main() {
+	f := MyFloat(-math.Sqrt2)
+	fmt.Println(f.Abs())
+}
+
+```
+
+> 接收者的类型定义和方法声明必须在同一包内；不能为内建类型声明方法
+
++ 指针接收者
+
+  对于类型T，接收者的类型可以用\*T。(此外，T不能是像*int这样的指针)
+
+  ```go
+  func (v *Vertex) Scale(f float64) {
+  	v.X = v.X * f
+  	v.Y = v.Y * f
+  }
+  ```
+
+  > 指针接收者的方法可以修改接收者指向的值
+
+  方法与指针重定向
+
+  带指针参数的函数必须接受一个指针
+
+  而以指针为接收者的方法被调用时，接收者既能为值又能为指针
+
+  这是因为：当v是个值而非指针时，Go 会将语句 v.Scale(5) 解释为 (&v).Scale(5)。
+
+  ```go
+  package main
+  
+  import "fmt"
+  
+  type Vertex struct {
+  	X, Y float64
+  }
+  
+  func (v *Vertex) Scale(f float64) {
+  	v.X = v.X * f
+  	v.Y = v.Y * f
+  }
+  
+  func ScaleFunc(v *Vertex, f float64) {
+  	v.X = v.X * f
+  	v.Y = v.Y * f
+  }
+  
+  func main() {
+  	v := Vertex{3, 4}
+  	v.Scale(2)
+  	ScaleFunc(&v, 10)
+  
+  	p := &Vertex{4, 3}
+  	p.Scale(3)
+  	ScaleFunc(p, 8)
+  
+  	fmt.Println(v, p)
+  }
+  ```
+
+  
+
+
+
+#### 接口
+
+*接口类型*是由一组`方法签名`定义的集合
+
+An *interface type* is defined as a set of `method signatures`.
+
+接口类型的变量可以保存任何实现了这些方法的值。
+
+
+
 ### 并发
 
+
+
+
+
+### new 分配
+
+#### new
+
+new(T) 会为类型为 T 的新项分配已置零的内存空间， 并返回它的地址  
+
+
+
+每当获取一个复合字面(composite literals)的地址时， 都将为一个新的实例分配内存  
+
+以字段: 值 对的形式明确地标出元素， 初始化
+字段时就可以按任何顺序出现， 未给出的字段值将赋予零值。   
+
+```go
+func NewFile(fd int, name string) *File {
+    if fd < 0 {
+    	return nil
+    } 
+    return &File{fd: fd, name: name}
+}
+```
+
+
+
+#### make
+
+它只用于创建切片、映射和信道并返回类型为 T（ 而非 *T ） 的一个已初始化 （ 而非置零） 的值  
+
+出现这种用差异的原因在于， 这三种类型**本质上为引用**数据类型， 它们在使用前必须初始化。  
+
+```go
+make([]int, 10, 100)
+```
+
+会分配一个具有 100 个 int 的数组空间， 接着创建一个长度为 10， 容量为 100 并指向该数组
+中前 10 个元素的切片结构  
+
+(生成切片时， 其容量可以省略 )
