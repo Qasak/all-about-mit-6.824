@@ -518,9 +518,56 @@ An *interface type* is defined as a set of `method signatures`.
 
 ### 并发
 
+```go
+var done sync.WaitGroup
+for _, u := range urls {
+    done.Add(1)
+    u2 := u
+    go func() {
+        defer done.Done()
+        ConcurrentMutex(u2, fetcher, f)
+    }()
+    //go func(u string) {
+    //	defer done.Done()
+    //	ConcurrentMutex(u, fetcher, f)
+    //}(u)
+}
+done.Wait()
+```
+
+> 为了既调用ConcurrentMutex又调用Done
+
+#### 信道channel
+
+用make创建
+
+默认值是零， 表示不带缓冲的或*同步*的信道。  
+
+无缓冲信道在通信时会同步交换数据， 它能确保（ 两个 Go 程的） 计算处于确定状态。  
+
+```go
+ch:=make(chan int)
+```
+
+可以带缓冲
+
+```go
+ch := make(chan int, 100)
+```
+
+仅当信道的缓冲区填满后，向其发送数据时才会阻塞。当缓冲区为空时，接受方会阻塞。
 
 
 
+
+
+
+
+
+
+
+
+### 内存
 
 ### new 分配
 
@@ -554,9 +601,53 @@ func NewFile(fd int, name string) *File {
 
 ```go
 make([]int, 10, 100)
+make([]int, 10)
 ```
 
 会分配一个具有 100 个 int 的数组空间， 接着创建一个长度为 10， 容量为 100 并指向该数组
 中前 10 个元素的切片结构  
 
+
+
 (生成切片时， 其容量可以省略 )
+
+#### copy
+
+```go
+func main() {
+
+    slice := []int{0, 1, 2, 3, 4}
+    slice2 := slice[1:4]
+
+    slice4 := make([]int, len(slice2))
+
+    copy(slice4, slice2)
+
+    fmt.Printf("slice %v, slice4 %v \n", slice, slice4)
+    slice[1] = 1111
+    fmt.Printf("slice %v, slice4 %v \n", slice, slice4)
+}
+```
+
+slice4是从slice2中copy生成，slice和slice4底层的匿名数组是不一样的。因此修改他们不会影响彼此
+
+### 数组arrary
+
+数组是值。 将一个数组赋予另一个数组会复制其所有元素。
+特别地， 若将某个数组传入某个函数， 它将接收到该数组的一份副本而非指针。
+数组的大小是其类型的一部分。 类型 [10]int 和 [20]int 是不同的。  
+
+数组为值的属性很有用， 但代价高昂； 若你想要 C 那样的行为和效率， 你可以传递一个指向
+该数组的指针。  
+
+```go
+func Sum(a *[3]float64) (sum float64) {
+    for _, v := range *a {
+    	sum += v
+    } 
+    return
+} 
+array := [...]float64{7.0, 8.5, 9.1}
+x := Sum(&array) // 注意显式的取址操作
+```
+
