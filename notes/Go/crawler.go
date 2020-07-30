@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	// "time"
 )
 
 //
@@ -26,6 +27,7 @@ func Serial(url string, fetcher Fetcher, fetched map[string]bool) {
 	for _, u := range urls {
 		Serial(u, fetcher, fetched)
 	}
+	// time.Sleep(time.Duration(2)*time.Second)
 	return
 }
 
@@ -91,15 +93,19 @@ func worker(url string, ch chan []string, fetcher Fetcher) {
 func master(ch chan []string, fetcher Fetcher) {
 	n := 1
 	fetched := make(map[string]bool)
-	for urls := range ch {
+	for urls := range ch { // for loop wait here, kepp waiting until sth shows up in the channel
+		fmt.Println(urls)
 		for _, u := range urls {
 			if fetched[u] == false {
 				fetched[u] = true
+				fmt.Println(n)
 				n += 1
 				go worker(u, ch, fetcher)
 			}
 		}
+		
 		n -= 1
+		fmt.Println(n)
 		if n == 0 {
 			break
 		}
@@ -121,6 +127,7 @@ func ConcurrentChannel(url string, fetcher Fetcher) {
 func main() {
 	fmt.Printf("=== Serial===\n")
 	Serial("http://golang.org/", fetcher, make(map[string]bool))
+
 
 	fmt.Printf("=== ConcurrentMutex ===\n")
 	ConcurrentMutex("http://golang.org/", fetcher, makeState())
