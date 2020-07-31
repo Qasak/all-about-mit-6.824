@@ -4,6 +4,8 @@
 
 #### 非对称加密
 
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/bitcoin/%E9%9D%9E%E5%AF%B9%E7%A7%B0%E5%8A%A0%E5%AF%860.png)
+
 它需要两个密钥，一个是公开密钥，另一个是私有密钥；公钥用作加密，私钥则用作解密。
 
 公钥可以公开，可任意向外发布；私钥不可以公开，必须由用户自行严格秘密保管，绝不透过任何途径向任何人提供，也不会透露给被信任的要通信的另一方。
@@ -20,7 +22,11 @@
 
 #### 加密散列函数
 
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/bitcoin/%E9%9B%AA%E5%B4%A9%E6%95%88%E5%BA%94avalanche%20effect.png)
+
 是散列函数的一种。它被认为是一种单向函数，也就是说极其难以由散列函数输出的结果，回推输入的数据是什么
+
+
 
 这种散列函数的输入数据，通常被称为**消息**（message），而它的输出结果，经常被称为**消息摘要**（message digest）或**摘要**（digest）
 
