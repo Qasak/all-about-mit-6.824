@@ -16,6 +16,8 @@
 
 #### 数字签名
 
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/bitcoin/%E6%95%B0%E5%AD%97%E7%AD%BE%E5%90%8D.png)
+
 相反，如果某一用户使用他的私钥加密明文，任何人都可以用该用户的公钥解密密文
 
 由于私钥只由该用户自己持有，故可以肯定该文件必定出自于该用户；公众可以验证该用户发布的数据或文件是否完整、中途有否曾被篡改，接收者可信赖这些数据、文件确实来自于该用户，这被称作数字签名
