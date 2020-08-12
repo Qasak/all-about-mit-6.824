@@ -172,16 +172,16 @@ Paxos算法分为**两个阶段**。具体如下：
 
   (b) 如果Acceptor收到一个针对编号为N的提案的Accept请求，只要该Acceptor**没有**对编号**大于N**的**Prepare请求**做出过**响应**，它就**接受该提案**。
 
-![img]()
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/paxos%E6%B5%81%E7%A8%8B.png)
 
 ## Learner学习被选定的value
 
 Learner学习（获取）被选定的value有如下三种方案：
 
-![img]()
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/learner%E5%AD%A6%E4%B9%A0%E8%A2%AB%E9%80%89%E5%AE%9A%E7%9A%84value.png)
 
 ## 如何保证Paxos算法的活性
 
-![img]()
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/paxos%E7%9A%84%E6%B4%BB%E6%80%A7liveness.png)
 
 通过选取**主Proposer**，就可以保证Paxos算法的活性。至此，我们得到一个**既能保证安全性，又能保证活性**的**分布式一致性算法**——**Paxos算法**。
