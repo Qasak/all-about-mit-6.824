@@ -1,5 +1,9 @@
 > https://www.cnblogs.com/linbingdong/p/6253479.html
 
+## 什么是paxos
+
+Paxos算法是基于**消息传递**且具有**高度容错特性**的**一致性算法**，是目前公认的解决**分布式一致性**问题**最有效**的算法之一。
+
 ## 相关概念
 
 在Paxos算法中，有三种角色：
@@ -13,3 +17,69 @@
 - Proposer：只要Proposer发的提案被Acceptor接受（刚开始先认为只需要一个Acceptor接受即可，在推导过程中会发现需要半数以上的Acceptor同意才行），Proposer就认为该提案里的value被选定了。
 - Acceptor：只要Acceptor接受了某个提案，Acceptor就认为该提案里的value被选定了。
 - Learner：Acceptor告诉Learner哪个value被选定，Learner就认为那个value被选定。
+
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/paxos%E8%A7%92%E8%89%B2.png)
+
+## 问题描述
+
+假设有一组可以**提出（propose）value**（value在提案Proposal里）的**进程集合**。一个一致性算法需要保证提出的这么多value中，**只有一个**value被选定（chosen）。如果没有value被提出，就不应该有value被选定。如果一个value被选定，那么所有进程都应该能**学习（learn）**到这个被选定的value。
+
+对于一致性算法，**安全性（safaty）**要求如下：
+
+- 只有被提出的value才能被选定。
+- 只有一个value被选定，并且
+- 如果某个进程认为某个value被选定了，那么这个value必须是真的被选定的那个。
+
+> Paxos的目标：保证最终有一个value会被选定，当value被选定后，进程最终也能获取到被选定的value。
+
+假设不同角色之间可以通过发送消息来进行通信，那么：
+
+- 每个角色以任意的速度执行，可能因出错而停止，也可能会重启。一个value被选定后，所有的角色可能失败然后重启，除非那些失败后重启的角色能记录某些信息，否则等他们重启后无法确定被选定的值。
+- 消息在传递过程中可能出现任意时长的延迟，可能会重复，也可能丢失。但是消息不会被损坏，即消息内容不会被篡改（拜占庭将军问题）。
+
+## 推导过程
+
+### 最简单的方案——只有一个Acceptor
+
+假设只有一个Acceptor（可以有多个Proposer），只要Acceptor接受它收到的第一个提案，则该提案被选定，该提案里的value就是被选定的value。这样就保证只有一个value会被选定。
+
+但是，如果这个唯一的Acceptor宕机了，那么整个系统就**无法工作**了！
+
+因此，必须要有**多个Acceptor**！
+
+
+
+### 多个Acceptor
+
+多个Acceptor的情况如下图。那么，如何保证在多个Proposer和多个Acceptor的情况下选定一个value呢？
+
+
+
+
+
+下面开始寻找解决方案。
+
+如果我们希望即使只有一个Proposer提出了一个value，该value也最终被选定。
+
+那么，就得到下面的约束：
+
+> P1：一个Acceptor必须接受它收到的第一个提案。
+
+但是，这又会引出另一个问题：如果每个Proposer分别提出不同的value，发给不同的Acceptor。根据P1，Acceptor分别接受自己收到的value，就导致不同的value被选定。出现了不一致。如下图：
+
+
+
+刚刚是因为『一个提案只要被一个Acceptor接受，则该提案的value就被选定了』才导致了出现上面不一致的问题。因此，我们需要加一个规定：
+
+> 规定：一个提案被选定需要被**半数以上**的Acceptor接受
+
+这个规定又暗示了：『一个Acceptor必须能够接受不止一个提案！』不然可能导致最终没有value被选定。比如上图的情况。v1、v2、v3都没有被选定，因为它们都只被一个Acceptor的接受。
+
+
+
+最开始讲的『**提案=value**』已经不能满足需求了，于是重新设计提案，给每个提案加上一个提案编号，表示提案被提出的顺序。令『**提案=提案编号+value**』。
+
+虽然允许多个提案被选定，但必须保证所有被选定的提案都具有相同的value值。否则又会出现不一致。
+
+
+
