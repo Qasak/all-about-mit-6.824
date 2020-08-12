@@ -53,6 +53,8 @@ Paxos算法是基于**消息传递**且具有**高度容错特性**的**一致�
 
 多个Acceptor的情况如下图。那么，如何保证在多个Proposer和多个Acceptor的情况下选定一个value呢？
 
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/paxos_%E5%A4%9A%E4%B8%AAacceptor.png)
+
 
 
 
@@ -66,6 +68,8 @@ Paxos算法是基于**消息传递**且具有**高度容错特性**的**一致�
 > P1：一个Acceptor必须接受它收到的第一个提案。
 
 但是，这又会引出另一个问题：如果每个Proposer分别提出不同的value，发给不同的Acceptor。根据P1，Acceptor分别接受自己收到的value，就导致不同的value被选定。出现了不一致。如下图：
+
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/%E5%A4%9A%E4%B8%AA%E4%B8%8D%E5%90%8C%E7%9A%84value%E8%A2%AB%E9%80%89%E5%AE%9A.png)
 
 
 
@@ -83,3 +87,69 @@ Paxos算法是基于**消息传递**且具有**高度容错特性**的**一致�
 
 
 
+于是有了下面的约束：
+
+> P2：如果某个value为v的提案被选定了，那么每个编号更高的被选定提案的value必须也是v。
+
+
+
+一个提案只有被Acceptor接受才可能被选定，因此我们可以把P2约束改写成对Acceptor接受的提案的约束P2a。
+
+> P2a：如果某个value为v的提案被选定了，那么每个编号更高的被Acceptor接受的提案的value必须也是v。
+
+但是，考虑如下的情况：假设总的有5个Acceptor。Proposer2提出[M1,V1]的提案，Acceptor2~5（半数以上）均接受了该提案，于是对于Acceptor2~5和Proposer2来讲，它们都认为V1被选定。Acceptor1刚刚从宕机状态恢复过来（之前Acceptor1没有收到过任何提案），此时Proposer1向Acceptor1发送了[M2,V2]的提案（V2≠V1且M2>M1），对于Acceptor1来讲，这是它收到的第一个提案。根据P1（一个Acceptor必须接受它收到的第一个提案。）,Acceptor1必须接受该提案！同时Acceptor1认为V2被选定。这就出现了两个问题：
+
+1. Acceptor1认为V2被选定，Acceptor2~5和Proposer2认为V1被选定。出现了不一致。
+2. V1被选定了，但是编号更高的被Acceptor1接受的提案[M2,V2]的value为V2，且V2≠V1。这就跟P2a（如果某个value为v的提案被选定了，那么每个编号更高的被Acceptor接受的提案的value必须也是v）矛盾了。
+
+![img]()
+
+
+
+所以我们要对P2a约束进行强化！
+
+P2a是对Acceptor接受的提案约束，但其实提案是Proposer提出来的，所有我们可以对Proposer提出的提案进行约束。得到P2b：
+
+> P2b：如果某个value为v的提案被选定了，那么之后任何Proposer提出的编号更高的提案的value必须也是v。
+
+由P2b可以推出P2a进而推出P2。
+
+那么，如何确保在某个value为v的提案被选定后，Proposer提出的编号更高的提案的value都是v呢？
+
+只要满足P2c即可：
+
+> P2c：对于任意的N和V，如果提案[N, V]被提出，那么存在一个半数以上的Acceptor组成的集合S，满足以下两个条件中的任意一个：
+
+- S中每个Acceptor都没有接受过编号小于N的提案。
+- S中Acceptor接受过的最大编号的提案的value为V。
+
+### Proposer生成提案
+
+为了满足P2b，这里有个比较重要的思想：Proposer生成提案之前，应该先去**『学习』**已经被选定或者可能被选定的value，然后以该value作为自己提出的提案的value。
+
+如果没有value被选定，Proposer才可以自己决定value的值。这样才能达成一致。这个学习的阶段是通过一个**『Prepare请求』**实现的。
+
+于是我们得到了如下的**提案生成算法**：
+
+1. Proposer选择一个**新的提案编号N**，然后向**某个Acceptor集合**（半数以上）发送请求，要求该集合中的每个Acceptor做出如下响应（response）。
+   (a) 向Proposer承诺保证**不再接受**任何编号**小于N的提案**。
+   (b) 如果Acceptor已经接受过提案，那么就向Proposer响应**已经接受过**的编号小于N的**最大编号的提案**。
+
+   我们将该请求称为**编号为N**的**Prepare请求**。
+
+2. 如果Proposer收到了**半数以上**的Acceptor的**响应**，那么它就可以生成编号为N，Value为V的**提案[N,V]**。这里的V是所有的响应中**编号最大的提案的Value**。如果所有的响应中**都没有提案**，那 么此时V就可以由Proposer**自己选择**。
+   生成提案后，Proposer将该**提案**发送给**半数以上**的Acceptor集合，并期望这些Acceptor能接受该提案。我们称该请求为**Accept请求**。（注意：此时接受Accept请求的Acceptor集合**不一定**是之前响应Prepare请求的Acceptor集合）
+
+### Acceptor接受提案
+
+Acceptor**可以忽略任何请求**（包括Prepare请求和Accept请求）而不用担心破坏算法的**安全性**。因此，我们这里要讨论的是什么时候Acceptor可以响应一个请求。
+
+我们对Acceptor接受提案给出如下约束：
+
+> P1a：一个Acceptor只要尚**未响应过**任何**编号大于N**的**Prepare请求**，那么他就可以**接受**这个**编号为N的提案**。
+
+如果Acceptor收到一个编号为N的Prepare请求，在此之前它已经响应过编号大于N的Prepare请求。根据P1a，该Acceptor不可能接受编号为N的提案。因此，该Acceptor可以忽略编号为N的Prepare请求。当然，也可以回复一个error，让Proposer尽早知道自己的提案不会被接受。
+
+因此，一个Acceptor**只需记住**：1. 已接受的编号最大的提案 2. 已响应的请求的最大编号。
+
+![img]()
