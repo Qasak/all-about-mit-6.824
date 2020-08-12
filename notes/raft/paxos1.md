@@ -102,7 +102,7 @@ Paxos算法是基于**消息传递**且具有**高度容错特性**的**一致�
 1. Acceptor1认为V2被选定，Acceptor2~5和Proposer2认为V1被选定。出现了不一致。
 2. V1被选定了，但是编号更高的被Acceptor1接受的提案[M2,V2]的value为V2，且V2≠V1。这就跟P2a（如果某个value为v的提案被选定了，那么每个编号更高的被Acceptor接受的提案的value必须也是v）矛盾了。
 
-![img]()
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/%E7%9F%9B%E7%9B%BE1.png)
 
 
 
@@ -152,4 +152,36 @@ Acceptor**可以忽略任何请求**（包括Prepare请求和Accept请求）而�
 
 因此，一个Acceptor**只需记住**：1. 已接受的编号最大的提案 2. 已响应的请求的最大编号。
 
+![img](https://github.com/Qasak/distributed-system-notes-and-labs/blob/master/notes/raft/acceptor%E6%8E%A5%E6%94%B6%E6%8F%90%E6%A1%88.png)
+
+### Paxos算法描述
+
+经过上面的推导，我们总结下Paxos算法的流程。
+
+Paxos算法分为**两个阶段**。具体如下：
+
+- **阶段一：**
+
+  (a) Proposer选择一个**提案编号N**，然后向**半数以上**的Acceptor发送编号为N的**Prepare请求**。
+
+  (b) 如果一个Acceptor收到一个编号为N的Prepare请求，且N**大于**该Acceptor已经**响应过的**所有**Prepare请求**的编号，那么它就会将它已经**接受过的编号最大的提案（如果有的话）**作为响应反馈给Proposer，同时该Acceptor承诺**不再接受**任何**编号小于N的提案**。
+
+- **阶段二：**
+
+  (a) 如果Proposer收到**半数以上**Acceptor对其发出的编号为N的Prepare请求的**响应**，那么它就会发送一个针对**[N,V]提案**的**Accept请求**给**半数以上**的Acceptor。注意：V就是收到的**响应**中**编号最大的提案的value**，如果响应中**不包含任何提案**，那么V就由Proposer**自己决定**。
+
+  (b) 如果Acceptor收到一个针对编号为N的提案的Accept请求，只要该Acceptor**没有**对编号**大于N**的**Prepare请求**做出过**响应**，它就**接受该提案**。
+
 ![img]()
+
+## Learner学习被选定的value
+
+Learner学习（获取）被选定的value有如下三种方案：
+
+![img]()
+
+## 如何保证Paxos算法的活性
+
+![img]()
+
+通过选取**主Proposer**，就可以保证Paxos算法的活性。至此，我们得到一个**既能保证安全性，又能保证活性**的**分布式一致性算法**——**Paxos算法**。
