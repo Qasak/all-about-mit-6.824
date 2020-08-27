@@ -21,6 +21,9 @@ func main() {
 	}
 
 	m := mr.MakeMaster(os.Args[1:], 10)
+	// // -----------test point-----------
+	// fmt.Println(os.Args[1:])
+	
 	for m.Done() == false {
 		time.Sleep(time.Second)
 	}

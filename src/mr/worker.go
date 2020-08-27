@@ -4,7 +4,8 @@ import "fmt"
 import "log"
 import "net/rpc"
 import "hash/fnv"
-
+import "os"
+import "io/ioutil"
 
 //
 // Map functions return a slice of KeyValue.
@@ -35,6 +36,28 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
+	intermediate := []KeyValue{}
+	args:=WorkerArgs{}
+	args.Request="get_task"
+	reply:=WorkerReply{}
+	call("Master.SendTask", &args, &reply)
+	
+	filename:=reply.Filename
+	file, err := os.Open("../main/"+filename)
+	if err != nil {
+		log.Fatalf("cannot open %v", filename)
+	}
+	content, err := ioutil.ReadAll(file)
+
+	if err != nil {
+		log.Fatalf("cannot read %v", filename)
+	}
+	file.Close()
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
+	fmt.Println(filename)
+
+
 
 }
 
@@ -49,7 +72,7 @@ func CallExample() {
 	args := ExampleArgs{}
 
 	// fill in the argument(s).
-	args.X = 99
+	args.X = 1
 
 	// declare a reply structure.
 	reply := ExampleReply{}
